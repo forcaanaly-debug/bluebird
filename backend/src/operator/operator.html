@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>BlueBird — Driver verification</title>
+  <style>
+    :root { font-family: system-ui, sans-serif; background: #f4f1ea; color: #1c1917; }
+    body { max-width: 720px; margin: 0 auto; padding: 1.25rem; }
+    h1 { font-size: 1.25rem; margin: 0 0 0.5rem; }
+    p.muted { color: #57534e; font-size: 0.875rem; margin: 0 0 1rem; }
+    section { background: #fff; border: 1px solid #e7e5e4; border-radius: 12px; padding: 1rem; margin-bottom: 1rem; }
+    label { display: block; font-size: 0.75rem; font-weight: 600; margin-bottom: 0.25rem; color: #44403c; }
+    input, button { font: inherit; box-sizing: border-box; }
+    input { width: 100%; padding: 0.5rem 0.6rem; border: 1px solid #d6d3d1; border-radius: 8px; margin-bottom: 0.6rem; }
+    .row { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+    button { padding: 0.5rem 0.85rem; border-radius: 8px; border: 1px solid #292524; background: #292524; color: #fafaf9; cursor: pointer; }
+    button.secondary { background: #fff; color: #292524; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .err { color: #b91c1c; font-size: 0.875rem; margin: 0.25rem 0 0; }
+    .card { border: 1px solid #e7e5e4; border-radius: 10px; padding: 0.75rem; margin-bottom: 0.6rem; background: #fafaf9; }
+    .card h3 { margin: 0 0 0.35rem; font-size: 0.95rem; }
+    .card small { color: #57534e; }
+    pre { font-size: 0.7rem; overflow: auto; background: #1c1917; color: #e7e5e4; padding: 0.5rem; border-radius: 6px; }
+  </style>
+</head>
+<body>
+  <h1>BlueBird operator</h1>
+  <p class="muted">Sign in with the seeded admin phone (OTP), then approve or reject pending drivers. Same origin as the API (<code>/api</code>).</p>
+
+  <section id="auth">
+    <label>API base</label>
+    <input id="apiBase" type="text" autocomplete="off" />
+    <label>Admin phone</label>
+    <input id="phone" type="tel" placeholder="+923001234567" />
+    <div class="row">
+      <button type="button" class="secondary" id="reqOtp">Request OTP</button>
+    </div>
+    <label>OTP code</label>
+    <input id="otp" inputmode="numeric" autocomplete="one-time-code" />
+    <div class="row">
+      <button type="button" id="verify">Verify &amp; save token</button>
+    </div>
+    <p id="authErr" class="err" hidden></p>
+  </section>
+
+  <section id="work" hidden>
+    <div class="row" style="margin-bottom: 0.75rem;">
+      <button type="button" class="secondary" id="reload">Refresh pending</button>
+      <button type="button" class="secondary" id="logout">Clear token</button>
+    </div>
+    <div id="list"></div>
+    <p id="listErr" class="err" hidden></p>
+  </section>
+
+  <script>
+    (function () {
+      var STORAGE = "bluebird_operator_jwt";
+      var apiBaseInput = document.getElementById("apiBase");
+      var phoneInput = document.getElementById("phone");
+      var otpInput = document.getElementById("otp");
+      var authErr = document.getElementById("authErr");
+      var listEl = document.getElementById("list");
+      var listErr = document.getElementById("listErr");
+      var work = document.getElementById("work");
+
+      function defaultApiBase() {
+        var u = window.location.origin;
+        return u + "/api";
+      }
+
+      apiBaseInput.value = localStorage.getItem("bluebird_operator_api") || defaultApiBase();
+      phoneInput.value = localStorage.getItem("bluebird_operator_phone") || "";
+
+      function api(path, opts) {
+        opts = opts || {};
+        var base = apiBaseInput.value.replace(/\/$/, "");
+        var headers = { "Content-Type": "application/json" };
+        if (opts.token) headers["Authorization"] = "Bearer " + opts.token;
+        return fetch(base + path, {
+          method: opts.method || "GET",
+          headers: headers,
+          body: opts.body ? JSON.stringify(opts.body) : undefined
+        }).then(function (res) {
+          return res.text().then(function (text) {
+            var data = null;
+            if (text) {
+              try { data = JSON.parse(text); } catch (e) { data = { message: text }; }
+            }
+            if (!res.ok) {
+              var msg = (data && data.message) || "Request failed (" + res.status + ")";
+              throw new Error(msg);
+            }
+            return data;
+          });
+        });
+      }
+
+      function showAuthErr(msg) {
+        authErr.textContent = msg;
+        authErr.hidden = !msg;
+      }
+
+      function token() {
+        return localStorage.getItem(STORAGE);
+      }
+
+      function setToken(t) {
+        if (t) localStorage.setItem(STORAGE, t);
+        else localStorage.removeItem(STORAGE);
+        work.hidden = !t;
+      }
+
+      setToken(token());
+
+      document.getElementById("reqOtp").onclick = function () {
+        showAuthErr("");
+        var phone = phoneInput.value.trim();
+        if (!phone) return showAuthErr("Enter phone");
+        localStorage.setItem("bluebird_operator_api", apiBaseInput.value.trim());
+        localStorage.setItem("bluebird_operator_phone", phone);
+        api("/auth/otp/request", { method: "POST", body: { phone: phone } })
+          .then(function () { alert("OTP requested. Check SMS or server logs in dev."); })
+          .catch(function (e) { showAuthErr(e.message); });
+      };
+
+      document.getElementById("verify").onclick = function () {
+        showAuthErr("");
+        var phone = phoneInput.value.trim();
+        var code = otpInput.value.trim();
+        if (!phone || !code) return showAuthErr("Phone and OTP required");
+        api("/auth/otp/verify", { method: "POST", body: { phone: phone, code: code } })
+          .then(function (data) {
+            localStorage.setItem(STORAGE, data.access_token);
+            setToken(data.access_token);
+            loadPending();
+          })
+          .catch(function (e) { showAuthErr(e.message); });
+      };
+
+      document.getElementById("logout").onclick = function () {
+        setToken(null);
+        listEl.innerHTML = "";
+      };
+
+      document.getElementById("reload").onclick = function () {
+        loadPending();
+      };
+
+      function loadPending() {
+        listErr.hidden = true;
+        listEl.textContent = "Loading…";
+        api("/admin/drivers/pending", { token: token() })
+          .then(function (rows) {
+            listEl.innerHTML = "";
+            if (!rows.length) {
+              listEl.textContent = "No pending drivers.";
+              return;
+            }
+            rows.forEach(function (d) {
+              var el = document.createElement("div");
+              el.className = "card";
+              el.innerHTML =
+                "<h3>" + (d.user && d.user.name ? escapeHtml(d.user.name) : "Driver") + "</h3>" +
+                "<small>" + escapeHtml((d.user && d.user.phone) || "") + " · " + escapeHtml(d.id) + "</small>";
+              var row = document.createElement("div");
+              row.className = "row";
+              row.style.marginTop = "0.5rem";
+              var approve = document.createElement("button");
+              approve.textContent = "Approve";
+              approve.onclick = function () {
+                patch(d.id, "APPROVED");
+              };
+              var reject = document.createElement("button");
+              reject.textContent = "Reject";
+              reject.className = "secondary";
+              reject.onclick = function () {
+                var reason = window.prompt("Reason (optional)") || "Rejected";
+                patch(d.id, "REJECTED", reason);
+              };
+              row.appendChild(approve);
+              row.appendChild(reject);
+              el.appendChild(row);
+              listEl.appendChild(el);
+            });
+          })
+          .catch(function (e) {
+            listEl.innerHTML = "";
+            listErr.textContent = e.message;
+            listErr.hidden = false;
+          });
+      }
+
+      function escapeHtml(s) {
+        return String(s)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;");
+      }
+
+      function patch(profileId, status, reason) {
+        listErr.hidden = true;
+        var body = { status: status };
+        if (reason) body.reason = reason;
+        api("/admin/drivers/" + profileId + "/verification", {
+          method: "PATCH",
+          token: token(),
+          body: body
+        })
+          .then(function () {
+            loadPending();
+          })
+          .catch(function (e) {
+            listErr.textContent = e.message;
+            listErr.hidden = false;
+          });
+      }
+
+      if (token()) loadPending();
+    })();
+  </script>
+</body>
+</html>

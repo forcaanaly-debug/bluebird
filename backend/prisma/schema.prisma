@@ -1,0 +1,134 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  RIDER
+  DRIVER
+  ADMIN
+}
+
+enum VerificationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum TripStatus {
+  PUBLISHED
+  CANCELLED
+  COMPLETED
+}
+
+enum BookingStatus {
+  REQUESTED
+  CONFIRMED
+  REJECTED
+  CANCELLED
+  COMPLETED
+}
+
+model User {
+  id        String   @id @default(cuid())
+  phone     String   @unique
+  name      String?
+  role      Role     @default(RIDER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  driverProfile DriverProfile?
+  riderBookings Booking[] @relation("RiderBookings")
+  messages      Message[]
+}
+
+model DriverProfile {
+  id                 String             @id @default(cuid())
+  userId             String             @unique
+  user               User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  verificationStatus VerificationStatus @default(PENDING)
+  rejectionReason    String?
+  vehicleType        String?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  documents DriverDocument[]
+  trips     Trip[]
+}
+
+model DriverDocument {
+  id              String        @id @default(cuid())
+  driverProfileId String
+  driverProfile   DriverProfile @relation(fields: [driverProfileId], references: [id], onDelete: Cascade)
+  docType         String
+  fileUrl         String
+  createdAt       DateTime      @default(now())
+}
+
+model Trip {
+  id              String     @id @default(cuid())
+  driverProfileId String
+  driverProfile   DriverProfile @relation(fields: [driverProfileId], references: [id], onDelete: Cascade)
+  departureCity   String
+  arrivalCity     String
+  departureDate   DateTime
+  departureTime   String
+  seatsAvailable  Int
+  farePerSeat     Int
+  vehicleType     String
+  notes           String?
+  status          TripStatus @default(PUBLISHED)
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  bookings Booking[]
+  messages Message[]
+}
+
+model Booking {
+  id        String        @id @default(cuid())
+  tripId    String
+  trip      Trip          @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  riderId   String
+  rider     User          @relation("RiderBookings", fields: [riderId], references: [id], onDelete: Cascade)
+  seats     Int
+  status    BookingStatus @default(REQUESTED)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  payment Payment?
+}
+
+model Payment {
+  id        String   @id @default(cuid())
+  bookingId String   @unique
+  booking   Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  method    String
+  reference String?
+  proofUrl  String?
+  status    String   @default("pending")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  tripId    String
+  trip      Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  senderId  String
+  sender    User     @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  body      String
+  createdAt DateTime @default(now())
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  actorId   String
+  action    String
+  metadata  Json?
+  createdAt DateTime @default(now())
+}

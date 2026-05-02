@@ -1,0 +1,28 @@
+{
+  "expo": {
+    "name": "BlueBird",
+    "slug": "bluebird",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.bluebird.app"
+    },
+    "android": {
+      "package": "com.bluebird.app"
+    },
+    "web": {
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-web-browser"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "fab6efa7-cedf-4335-9887-d2ff939150b1"
+      }
+    },
+    "owner": "furqanalis-organization"
+  }
+}
