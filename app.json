@@ -7,7 +7,10 @@
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.bluebird.app"
+      "bundleIdentifier": "com.bluebird.app",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "com.bluebird.app"
@@ -23,6 +26,12 @@
         "projectId": "fab6efa7-cedf-4335-9887-d2ff939150b1"
       }
     },
-    "owner": "furqanalis-organization"
+    "owner": "furqanalis-organization",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/fab6efa7-cedf-4335-9887-d2ff939150b1"
+    }
   }
 }

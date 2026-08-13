@@ -2,6 +2,8 @@
 
 Mountain transport marketplace (Gilgit-Baltistan corridors): **Expo mobile app** + **NestJS API** + **ops docs** aligned to the prototype-to-launch plan.
 
+**New collaborator?** Start with [`docs/COLLABORATOR_HANDOFF.md`](docs/COLLABORATOR_HANDOFF.md) — product, architecture, links, how to run, blockers, and git sharing caveats.
+
 ## Repo layout
 
 | Path | Description |
@@ -11,7 +13,7 @@ Mountain transport marketplace (Gilgit-Baltistan corridors): **Expo mobile app**
 | [`docs/requirements/`](docs/requirements/) | P0 scope, acceptance criteria, corridor sequence |
 | [`docs/design/`](docs/design/) | Design tokens + UX flow diagrams |
 | [`docs/infra/`](docs/infra/) | Environments, secrets, CI/CD, monitoring, backups |
-| [`docs/ops/`](docs/ops/) | Pilot playbook, KPIs, public launch checklist |
+| [`docs/ops/`](docs/ops/) | Pilot playbook, KPIs, public launch checklist, tonight runbook |
 | [`docker-compose.yml`](docker-compose.yml) | Local Postgres + Redis |
 
 ## Mobile — quick start
@@ -23,6 +25,8 @@ npm run start
 ```
 
 Use Expo for Android (`a`) or iOS (`i`). Configure `EXPO_PUBLIC_API_URL` and Google client IDs in `.env` (see [`docs/ops/MOBILE_API_INTEGRATION.md`](docs/ops/MOBILE_API_INTEGRATION.md)).
+
+For EAS cloud builds (preview/production env vars, preflight check, Android preview command, SHA-1 OAuth troubleshooting), use [`docs/ops/MOBILE_EAS_SETUP.md`](docs/ops/MOBILE_EAS_SETUP.md).
 
 ## API — quick start
 
@@ -47,6 +51,8 @@ Implementation artifacts for the attached roadmap:
 3. Backend foundation — [`backend/`](backend/)
 4. Infra & security — [`docs/infra/`](docs/infra/), [`docker-compose.yml`](docker-compose.yml), [`.github/workflows/ci.yml`](.github/workflows/ci.yml)
 5. Pilot & launch — [`docs/ops/`](docs/ops/)
+
+Immediate runbook: [`docs/ops/TONIGHT_LAUNCH_EXECUTION.md`](docs/ops/TONIGHT_LAUNCH_EXECUTION.md)
 
 ## Next steps (product)
 
